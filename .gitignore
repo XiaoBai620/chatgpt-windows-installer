@@ -1,0 +1,10 @@
+dist/
+logs/
+__pycache__/
+*.msix
+*.appx
+*.msixbundle
+*.appxbundle
+*.part
+ChatGPT-License*.xml
+.chatgpt-installer.lock
