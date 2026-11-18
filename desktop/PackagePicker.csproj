@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWPF>true</UseWPF><AssemblyName>ChatGPT-PackagePicker</AssemblyName><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
+  <PropertyGroup><Version>1.0.2</Version></PropertyGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="DesktopUpdatePublicKey" Value="$(DesktopUpdatePublicKey)" />
+  </ItemGroup>
+</Project>
