@@ -1,79 +1,60 @@
-# ChatGPT Windows 离线下载与安装助手
+# ChatGPT Windows 安装助手
 
-[下载脚本 ZIP](https://github.com/XiaoBai620/chatgpt-windows-installer/releases/download/v1.1.0/ChatGPT-Offline-Helper-v1.1.0.zip) · [发布页](https://github.com/XiaoBai620/chatgpt-windows-installer/releases/latest)
+## 下载最新桌面版
 
-**优先用[官方 Windows 安装器](https://get.microsoft.com/installer/download/9PLM9XGG6VKS?cid=website_cta_psi)，或从 [Microsoft Store](https://apps.microsoft.com/detail/9plm9xgg6vks?hl=zh-CN&gl=CN) 安装。** 认准 ChatGPT，发布者 OpenAI；普通用户选正式版。
+当前正式版：**1.0.5**。点击下面的链接直接下载一个 EXE，无需先进入 GitHub 发布页：
 
-微软商店下载受网络环境影响；一直不开始或失败时，可以切换网络，或先开启你已有的代理 / 科学上网后重试。仍然下载不了，再用下面的备用脚本。
+- **[Windows x64 下载（常见 Intel / AMD 电脑）](https://github.com/XiaoBai620/chatgpt-windows-installer/releases/latest/download/ChatGPT-PackagePicker-win-x64.exe)**
+- **[Windows Arm64 下载](https://github.com/XiaoBai620/chatgpt-windows-installer/releases/latest/download/ChatGPT-PackagePicker-win-arm64.exe)**
+- [发布说明](https://github.com/XiaoBai620/chatgpt-windows-installer/releases/latest)
 
-这是 ACE64 整理的社区辅助工具，不是 OpenAI 官方脚本。只从 OpenAI 官方 HTTPS 地址下载应用包和离线许可证；仓库不托管、修改或重新分发 ChatGPT 应用本体。
+下载的是本项目的**安装助手**，ChatGPT 官方离线包约 1 GB，需要在助手内另外下载。助手需要对应架构的 **.NET 10 Desktop Runtime**；完整运行条件和安装方式见下文。下载链接始终指向标记为 Latest 的正式版，发布新版后文档链接保持不变。
 
-## 给普通用户
+在使用文档中可以直接复制：
 
-1. 下载上方脚本 ZIP，**先完整解压**。
-2. 只想保存离线包：双击 **`ChatGPT-Download.bat`**。想下载并安装：双击 **`ChatGPT-Install.bat`**，安装时按系统提示批准管理员权限。
-3. 下载包约 **1 GB**，需要联网和等待；慢网请耐心等最终结果，不要重复开多个安装窗口。默认存放在当前用户的 `下载\ChatGPT-offline`。
-4. 显示“已核验 ChatGPT 预配成功”后，保存工作，注销 Windows 并重新登录，再打开 ChatGPT；若明确提示需要重启，则按提示重启。
-5. 打开后从应用或 Microsoft Store 检查更新，商店有“更新”按钮时点击它。更新也需要可用网络。
-
-**仅断开远程桌面连接不等于注销。** 工具不会自动注销、重启或关闭应用。下载完成与安装完成会分别显示；离线安装后使用应用仍然需要联网。
-
-工具运行无需额外安装 Python、Node.js 或 PowerShell；使用 Windows 自带 JScript、curl、tar 和 DISM。Windows 11 优先；Windows 10 至少 19041，最终以实际下载包声明的最低系统版本为准。支持 x64 与 Arm64。
-
-## 已下载的包怎么用
-
-把完整 `ChatGPT-offline` 目录复制到目标电脑，把安装脚本也放到该电脑，运行：
-
-```cmd
-ChatGPT-Install.bat --cache "D:\ChatGPT-offline"
+```markdown
+[下载 ChatGPT Windows 安装助手（x64）](https://github.com/XiaoBai620/chatgpt-windows-installer/releases/latest/download/ChatGPT-PackagePicker-win-x64.exe)
+[下载 ChatGPT Windows 安装助手（Arm64）](https://github.com/XiaoBai620/chatgpt-windows-installer/releases/latest/download/ChatGPT-PackagePicker-win-arm64.exe)
 ```
 
-脚本核对包名、发布者、架构、系统要求与依赖。Windows 在实际部署时校验 MSIX 签名。只看清单不能证明签名有效；不要使用来源不明的安装包，不需要关闭 Windows 签名检查。
+## 运行条件
 
-## 更新与其他选项
+双击 `dist/win-x64/ChatGPT-PackagePicker.exe`；Arm64 使用 `dist/win-arm64/` 中的同名文件。这是轻量单文件 EXE，不携带 .NET。首次使用需要与 EXE 架构一致的 **.NET 10 Desktop Runtime（Windows 桌面运行时）**，不是 SDK 或 ASP.NET Core Runtime。缺少运行时时，Windows 图形宿主会提示下载。也可从 [Microsoft 官方下载页](https://dotnet.microsoft.com/download/dotnet/10.0) 选择 Desktop Runtime 的 Windows x64 或 Arm64，安装后重新打开助手。完全离线的电脑请提前准备对应的运行时安装程序。
 
-默认复用目录内已有的有效包。需要重新下载当前官方最新版时，使用 `--refresh`；这会重新下载约 1 GB，并保留原有完整包：
+## 使用
 
-```cmd
-ChatGPT-Download.bat --refresh
-ChatGPT-Install.bat --refresh
-```
+首页默认建议 Microsoft Store。商店不可用时，可从备用入口直接下载 OpenAI 当前发布的 MSIX 和许可证。完全断网时，在联网电脑准备适合目标架构的包和 XML，复制到目标电脑本地固定磁盘，再添加目录。[官方部署文档](https://learn.chatgpt.com/docs/enterprise/windows-deployment)。
 
-也可使用 `ChatGPT-Install.bat --download-only` 仅下载。仅下载不要求管理员权限、不修改系统。
+包列表扫描下载文件夹下 `ChatGPT-offline` 和当前会话添加目录的第一层 `.msix`，按清单中的数值版本排序；默认选中架构、系统要求、包身份、依赖和本地签名验证均通过的最高版本。本地最新不等于官方最新。
 
-```cmd
-ChatGPT-Install.bat --check
-ChatGPT-Install.bat --self-test
-ChatGPT-Install.bat --help
-```
+下载不会安装。部署时优先读取包旁同名 XML，也可选择许可证。程序检查 XML 格式，许可有效性由 Windows 判定。用户确认部署后，必要时请求管理员权限；系统预配清单不可读则停止，已预配同版或更高版则跳过。回查通过仅表示系统预配，不代表当前账户已注册、可启动或已登录。不会自动重启系统、注销或绕过管理策略。
 
-`--check` 仅查询本地工具/系统信息，`--self-test` 只做逻辑自测，都不下载或安装。自动化可加 `--no-pause`，避免结束后等待回车。
+## 更新安装助手（不是更新 ChatGPT）
 
-## 昨天的实际记录
+首页在后台检查一次（8 秒超时），不会自动下载。进入「更新详情…」并检查版本后，可选择：
 
-2026-11-12 的单次 Windows 11 x64 记录：下载约 **1008 MiB**，约 **12 分 33 秒**；curl 最终平均约 **1372 KiB/s（1.34 MiB/s）**；预配部署约 **67 秒**，最终重新查询确认版本 `26.1106.6628.0`。当天日志未记录 curl 错误。主包下载约占全程 92%，瓶颈主要在下载等待。
+- **更新并重启**：确认版本和当前 EXE 路径后，从[固定 GitHub 仓库](https://github.com/XiaoBai620/chatgpt-windows-installer/releases)下载并核对 SHA-256。旧助手退出后，由同一普通用户运行的本地辅助进程在同卷用 Windows `File.Replace` 替换文件并保留原件；新版首页显示后才确认成功。新版未能启动或未在 60 秒内显示首页时，尝试原子恢复并重新打开旧版。仅重启助手，不影响 ChatGPT 或系统。
+- **仅保存新版**：选择空目录并确认，校验通过才保存，不覆盖、不启动。关闭旧助手后手动替换。管理员启动、改名、非单文件、网络磁盘、符号链接或无写权限等情况下请使用此路径。不要为了更新而提权。直接打开发布页并由自己核实文件也可；这不等于助手已验证该下载。
 
-这是一台机器的一次样本，不是速度承诺，也不能证明其他网络更快或更慢；包体积和版本会变化。原始路径与系统日志没有公开，脱敏数据见 [docs/download-analysis.md](docs/download-analysis.md)。原版预配成功不等于本次修改版在其他机器上已完成安装验证。
+只在自己控制的本地目录内使用自动更新。辅助进程不接受目标路径、下载 URL 或命令；它检查启动进程、同字节副本、固定文件名、同目录随机事务、版本与架构，并复核文件摘要。标准名为 `ChatGPT-PackagePicker.exe` 或本架构的发行附件名。若断电、文件锁或系统策略导致无法自动恢复，先关闭相关进程，检查 EXE 同级 `.picker-update-<事务ID>/previous.exe`。此文件是该事务替换前的备份；确认无误后可手动恢复。不要运行来源不明的 helper 或备份。
 
-## 失败时
+**信任边界**：不使用项目密钥、`.sig` 或独立发布者签名。信任 HTTPS、GitHub Release API、该仓库的发布权限与其返回的附件 `digest`。只接受精确附件名、固定仓库/标签的下载地址、有效大小、`sha256:` 加 64 位十六进制摘要，以及 GitHub 发行附件 CDN 的 HTTPS 重定向。缺失、重复、不匹配或内容被篡改一律拒绝，不能静默回退到低版本。摘要不能防止发布账号/GitHub 同时修改附件及摘要，也不防御可任意写本地助手目录或控制当前账户的攻击者。助手的更新规则不改变 OpenAI MSIX 的 Windows 签名校验。
 
-- 下载失败：确认能访问官方地址；正常包保留，失败的本次临时文件会清理。当前版本不保证中断后的断点续传。
-- 缺少 Windows 工具、服务被禁用或系统组件错误：联系系统管理员 / 云电脑平台。工具不自动修复系统、不改权限或管理策略。
-- 安装锁还在：先确认旧窗口和 DISM 已结束，再由你手动处理锁文件；不要并发安装。
-- 应用占用：保存工作并关闭相关应用后重试。
+### 渠道与发布约定
 
-每次操作日志位于下载目录下的 `logs\运行时间`。分享前检查本机路径、用户名等个人信息；不要上传账户密码、API Key 或整个下载目录。
+- 正式桌面版发布时显式设为 GitHub 的 Latest（`gh release create ... --latest` 或发布页的「Set as latest release」），并保留下面的固定附件名，以保证文档中的 `releases/latest/download/` 直链始终可用。不要依赖历史脚本标签与桌面标签之间的版本自动排序。
+- 稳定构建只选非草稿、非预发布的 `desktop-v主.次.补丁`。候选构建还选标为预发布的 `desktop-v主.次.补丁-rcN`（如 `desktop-v1.0.2-rc1`）。先按三段数值版本，再按候选号排序，同基版稳定版高于所有 RC。只向前更新；`v1.1.0` 等历史脚本标签不参与比较。
+- 在 `desktop/PackagePicker.csproj` 指定 `Version`（例如 `1.0.4` 或 `1.0.5-rc1`），匹配 Release 标签及预发布标记。上传两个不含运行时的单文件 EXE，分别命名 `ChatGPT-PackagePicker-win-x64.exe` 与 `ChatGPT-PackagePicker-win-arm64.exe`。由 GitHub 为每个附件生成摘要；不上传签名、密钥或自制校验清单。未来构建请保留启动确认协议，否则旧助手会回滚。
+- 已经发布的旧版不会因为新代码而获得新能力。不能自更新的旧版，首次升级需手动下载。
 
-退出码 `0` 表示检查/下载完成或预配已核验，具体看结果文字；`1` 表示未完成，`2` 表示缺少脚本宿主；`99` 表示已交给新的管理员窗口继续，不代表安装成功。
+## 项目与验收
 
-## 维护与构建
+`desktop/Program.cs` 是 Picker 界面与入口；`Home.cs` 是首页。`Catalog.cs` / `Trust.cs` 检查本地包。`Acquisition.cs` 限定官方来源并管理下载。`Deployment.cs` 实现固定的 DISM 部署流程（和不提权的助手自更新相互独立）。`AssistantUpdates.cs`、`AssistantUpdateInstall.cs` 与 `AssistantUpdateWindow.cs` 分别负责发布记录/下载、替换恢复、用户确认。
 
-`installer.js` 是源码，`build.py` 生成两个可单独运行的 BAT 和小型 ZIP：
+使用 Windows .NET 10 SDK：`dotnet publish desktop/PackagePicker.csproj -c Release -r win-x64 --self-contained false -o dist/win-x64`。Arm64 将命令中的两个 `win-x64` 改为 `win-arm64`。只交付 `dist/` 的两个 EXE，不交付 `desktop/bin`、`desktop/obj` 或测试夹具。
 
-```text
-python build.py --output dist
-```
+- `--test` 运行包目录、下载、部署、自更新四组回归；更新测试使用模拟 HTTP 验证渠道、精确附件绑定、摘要、篡改、重定向和不覆盖。`--smoke` 与 `--home-smoke` 检查 WPF 控件与页面入口。
+- `--verify-download <临时目录>` 从官方来源下载约 1 GB 的 MSIX/许可证而不部署；`--verify-package <MSIX绝对路径>` 检查目录扫描和自动选择。
+- 在普通权限 x64 PowerShell 中运行 `./tests/AssistantUpdate-E2E.ps1` 可重现跨进程替换和回滚：测试在新建的本地临时目录使用同项目构建的旧版夹具与新版 EXE，核对新进程窗口和文件哈希，不从网上获取可执行文件；只有测试构建带本地夹具入口。真实 UAC/DISM 写入、干净 Windows 环境及 Arm64 原生运行仍需独立验收。
 
-发布包不含约 1 GB 的 ChatGPT 本体、下载日志、离线许可证或个人数据。`SHA256SUMS.txt` 可核对脚本包内文件；这不是官方 MSIX 的哈希。构建文件与测试记录见 [docs/validation.md](docs/validation.md)。
-
-官方依据：[OpenAI Windows 安装与离线包说明](https://learn.chatgpt.com/docs/enterprise/windows-deployment)、[Windows 应用指南](https://learn.chatgpt.com/docs/windows/windows-app)。
+2026-11-19 本机 x64 实测：临时目录的 `1.0.3-rc1` 退出后原位替换为 `1.0.4` 并显示新版首页；替换后的 SHA-256 与交付的 x64 EXE 一致。另一次故意令新版在显示首页前退出，已恢复旧文件的原始 SHA-256 并重新打开旧版首页。事务以中完整性、非管理员令牌运行，未替换用户安装。四组自测及两个窗口 smoke 通过；另实际下载并选中官方 x64 MSIX `26.1111.2228.0`（1,057,802,768 字节），未执行部署。

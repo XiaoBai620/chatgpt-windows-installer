@@ -1,6 +1,12 @@
 dist/
+desktop/bin/
+desktop/obj/
+.release-work/
+.vs/
 logs/
 __pycache__/
+*.user
+*.suo
 *.msix
 *.appx
 *.msixbundle
