@@ -45,17 +45,19 @@ internal static class Acquisition
         try
         {
             await PackageDownload.FetchAsync(Client, new Uri(Source, $"ChatGPT-{arch}.msix"), package, PackageLimit, "安装包", progress, ct, accelerate).ConfigureAwait(false);
-            progress.Report(new DownloadProgress("正在验证安装包身份、兼容性与 Windows 签名…"));
+            progress.Report(new DownloadProgress("安装包已下载，正在验证身份、兼容性与 Windows 签名…", Phase: DownloadPhase.Verifying));
             var row = Catalog.Inspect(package, arch, Environment.OSVersion.Version, Trust.Verify);
             ct.ThrowIfCancellationRequested();
             if (!row.Eligible || row.Version is null) throw new InvalidDataException("下载的安装包不可用：" + row.State);
             await PackageDownload.FetchAsync(Client, new Uri(Source, "ChatGPT-License.xml"), license, LicenseLimit, "离线许可证", progress, ct, false).ConfigureAwait(false);
+            progress.Report(new DownloadProgress("许可证已下载，正在检查 XML 格式…", Phase: DownloadPhase.Verifying));
             ValidateLicense(license);
             var target = Path.Combine(root, $"ChatGPT-{arch}-{row.Version}.msix");
             var targetLicense = Path.ChangeExtension(target, ".xml");
             ct.ThrowIfCancellationRequested();
             if (File.Exists(target))
             {
+                progress.Report(new DownloadProgress("正在比对已有版本，确认安装包与许可证一致…", Phase: DownloadPhase.Saving));
                 // Only reuse the exact pair just obtained and checked. A version number alone is not an integrity check.
                 if (!await SameAsync(license, targetLicense, ct).ConfigureAwait(false) ||
                     !await SameAsync(package, target, ct).ConfigureAwait(false))
@@ -63,6 +65,7 @@ internal static class Acquisition
                 ct.ThrowIfCancellationRequested();
                 return target;
             }
+            progress.Report(new DownloadProgress("下载与校验已完成，正在保存安装包和许可证…", Phase: DownloadPhase.Saving));
             Publish(package, license, target, ct);
             return target;
         }

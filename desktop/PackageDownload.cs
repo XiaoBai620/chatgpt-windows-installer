@@ -7,18 +7,24 @@ using Microsoft.Win32.SafeHandles;
 
 namespace PackagePicker;
 
+internal enum DownloadPhase { Transferring, Verifying, Saving }
+
 internal sealed record DownloadProgress(string Status, long Bytes = 0, long? TotalBytes = null,
     double BytesPerSecond = 0, TimeSpan Elapsed = default, TimeSpan Idle = default,
-    int Connections = 1, int Attempt = 1)
+    int Connections = 1, int Attempt = 1, DownloadPhase Phase = DownloadPhase.Transferring)
 {
-    internal double? Percent => TotalBytes is > 0 ? Math.Clamp(Bytes * 100d / TotalBytes.Value, 0, 100) : null;
-    internal TimeSpan? Remaining => TotalBytes is long total && BytesPerSecond > 0
+    internal double? Percent => Phase == DownloadPhase.Transferring && TotalBytes is > 0 ? Math.Clamp(Bytes * 100d / TotalBytes.Value, 0, 100) : null;
+    internal TimeSpan? Remaining => Phase == DownloadPhase.Transferring && TotalBytes is long total && BytesPerSecond > 0
         ? TimeSpan.FromSeconds(Math.Clamp((total - Bytes) / BytesPerSecond, 0, 8640000)) : null;
     internal static string Size(double bytes) => bytes >= 1048576 ? $"{bytes / 1048576:F1} MiB" : $"{bytes / 1024:F0} KiB";
-    internal string Text => $"{Status}\n{Size(Bytes)}" + (TotalBytes is long total ? $" / {Size(total)} · {Percent:F1}%" : "")
-        + $" · {Size(BytesPerSecond)}/s" + (Remaining is TimeSpan eta ? $" · 预计剩余 {(eta.TotalHours >= 1 ? $"{eta.TotalHours:F1} 小时" : eta.TotalMinutes >= 1 ? $"{Math.Ceiling(eta.TotalMinutes)} 分钟" : $"{Math.Ceiling(eta.TotalSeconds)} 秒")}" : " · 剩余时间待估算")
-        + (Idle.TotalSeconds >= 3 ? $"\n等待网络数据 {Idle.TotalSeconds:F0} 秒；30 秒无数据将自动重连。" : "")
-        + (Bytes > 0 && BytesPerSecond is > 0 and < 131072 && Elapsed.TotalSeconds >= 8 ? "\n当前速度较慢，多连接仍受本机带宽和官方线路影响。" : "");
+    internal string Statistics => Phase != DownloadPhase.Transferring ? "" : Size(Bytes) + (TotalBytes is long total ? $" / {Size(total)} · {Percent:F1}%" : "")
+        + $" · {Size(BytesPerSecond)}/s" + (Remaining is TimeSpan eta ? $" · 预计剩余 {(eta.TotalHours >= 1 ? $"{eta.TotalHours:F1} 小时" : eta.TotalMinutes >= 1 ? $"{Math.Ceiling(eta.TotalMinutes)} 分钟" : $"{Math.Ceiling(eta.TotalSeconds)} 秒")}" : " · 剩余时间待估算");
+    internal string NetworkHint => Phase != DownloadPhase.Transferring ? "" : Idle.TotalSeconds >= 3
+        ? $"连续 {Idle.TotalSeconds:F0} 秒未收到网络数据；30 秒无数据将自动重连。"
+        : Bytes > 0 && BytesPerSecond is > 0 and < 131072 && Elapsed.TotalSeconds >= 8
+            ? "仍在收到数据，当前速度较慢。多连接仍受本机带宽和官方线路影响。" : "";
+    internal string Text => Phase != DownloadPhase.Transferring ? Status
+        : $"{Status}\n{Statistics}" + (NetworkHint.Length > 0 ? "\n" + NetworkHint : "");
 }
 
 internal static class PackageDownload

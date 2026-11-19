@@ -77,6 +77,15 @@ internal static class PackageDownloadTests
         string File() => Path.Combine(directory.FullName, (++next) + ".msix");
         try
         {
+            // Package validation is local work, so it must not look like a zero-speed network transfer.
+            foreach (var phase in new[] { DownloadPhase.Verifying, DownloadPhase.Saving })
+            {
+                var local = new DownloadProgress("正在处理本地安装包…", 1024, 2048, 1024, Idle: TimeSpan.FromSeconds(5), Phase: phase);
+                Assert(local.Text == local.Status && local.Statistics.Length == 0 && local.NetworkHint.Length == 0 && local.Percent == null && local.Remaining == null,
+                    "Local validation or saving was presented as a network transfer");
+            }
+            Assert(new DownloadProgress("正在下载", 1024, 2048, 64, TimeSpan.FromSeconds(10)).NetworkHint.Contains("仍在收到数据"), "Slow transfer feedback is ambiguous");
+            Assert(new DownloadProgress("等待网络", 1024, 2048, 0, Idle: TimeSpan.FromSeconds(12)).NetworkHint.Contains("12 秒未收到"), "Stalled transfer feedback is ambiguous");
             // Range workers must assemble distinct offsets and resume only after bytes successfully written.
             int resumed = 0, broken = 0;
             var rangeHandler = new Handler(request =>
