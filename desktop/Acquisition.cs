@@ -1,5 +1,3 @@
-using System.Buffers;
-using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Http;
@@ -14,7 +12,6 @@ internal static class Acquisition
     private static readonly Uri Source = new("https://persistent.oaistatic.com/codex-app-prod/");
     private const long PackageLimit = 4L * 1024 * 1024 * 1024;
     private const long LicenseLimit = 4 * 1024 * 1024;
-    private const int MaxRedirects = 3;
     private static readonly HttpClient Client = new(new SocketsHttpHandler
     {
         AllowAutoRedirect = false,
@@ -23,7 +20,13 @@ internal static class Acquisition
         ConnectTimeout = TimeSpan.FromSeconds(30)
     }) { Timeout = Timeout.InfiniteTimeSpan };
 
-    internal static async Task<string> DownloadAsync(string cache, IProgress<string> progress, CancellationToken token)
+    static Acquisition() => Client.DefaultRequestHeaders.UserAgent.ParseAdd("ChatGPT-PackagePicker/1.0");
+
+    sealed class TextProgress(IProgress<string> progress) : IProgress<DownloadProgress> { public void Report(DownloadProgress value) => progress.Report(value.Text); }
+
+    internal static Task<string> DownloadAsync(string cache, IProgress<string> progress, CancellationToken token) => DownloadAsync(cache, new TextProgress(progress), token);
+
+    internal static async Task<string> DownloadAsync(string cache, IProgress<DownloadProgress> progress, CancellationToken token, bool accelerate = true)
     {
         token.ThrowIfCancellationRequested();
         var arch = RuntimeInformation.OSArchitecture switch
@@ -37,16 +40,16 @@ internal static class Acquisition
         var package = Path.Combine(stage, "ChatGPT.msix");
         var license = Path.ChangeExtension(package, ".xml");
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(token);
-        deadline.CancelAfter(TimeSpan.FromHours(1));
+        deadline.CancelAfter(TimeSpan.FromHours(8));
         var ct = deadline.Token;
         try
         {
-            await FetchAsync($"ChatGPT-{arch}.msix", package, PackageLimit, "安装包", progress, ct).ConfigureAwait(false);
-            progress.Report("正在验证安装包身份、兼容性与 Windows 签名…");
+            await PackageDownload.FetchAsync(Client, new Uri(Source, $"ChatGPT-{arch}.msix"), package, PackageLimit, "安装包", progress, ct, accelerate).ConfigureAwait(false);
+            progress.Report(new DownloadProgress("正在验证安装包身份、兼容性与 Windows 签名…"));
             var row = Catalog.Inspect(package, arch, Environment.OSVersion.Version, Trust.Verify);
             ct.ThrowIfCancellationRequested();
             if (!row.Eligible || row.Version is null) throw new InvalidDataException("下载的安装包不可用：" + row.State);
-            await FetchAsync("ChatGPT-License.xml", license, LicenseLimit, "离线许可证", progress, ct).ConfigureAwait(false);
+            await PackageDownload.FetchAsync(Client, new Uri(Source, "ChatGPT-License.xml"), license, LicenseLimit, "离线许可证", progress, ct, false).ConfigureAwait(false);
             ValidateLicense(license);
             var target = Path.Combine(root, $"ChatGPT-{arch}-{row.Version}.msix");
             var targetLicense = Path.ChangeExtension(target, ".xml");
@@ -97,60 +100,6 @@ internal static class Acquisition
     private static bool Allowed(Uri uri) => uri.IsAbsoluteUri && uri.Scheme == Uri.UriSchemeHttps &&
         uri.Port == 443 && uri.UserInfo.Length == 0 && uri.IdnHost.Equals(Source.IdnHost, StringComparison.OrdinalIgnoreCase);
 
-    private static async Task FetchAsync(string name, string destination, long limit, string label, IProgress<string> progress, CancellationToken ct)
-    {
-        progress.Report("正在下载" + label + "…");
-        var uri = new Uri(Source, name);
-        for (int redirects = 0; ; redirects++)
-        {
-            if (!Allowed(uri)) throw new InvalidDataException("下载地址不是允许的官方 HTTPS 来源。");
-            using var response = await Client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-            if ((int)response.StatusCode is 301 or 302 or 303 or 307 or 308)
-            {
-                if (redirects >= MaxRedirects || response.Headers.Location is not Uri location || !Uri.TryCreate(uri, location, out var next))
-                    throw new InvalidDataException("下载重定向次数过多或缺少有效目标。");
-                uri = next;
-                continue;
-            }
-            if (response.StatusCode != HttpStatusCode.OK) throw new HttpRequestException($"{label}下载失败：HTTP {(int)response.StatusCode}。");
-            long? length = response.Content.Headers.ContentLength;
-            if (response.Content.Headers.ContentRange != null || response.Content.Headers.ContentEncoding.Count != 0)
-                throw new InvalidDataException("下载响应不是完整的原始文件。");
-            using var input = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-            await using var output = new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None, 65536, useAsync: true);
-            var timer = Stopwatch.StartNew();
-            await CopyBoundedAsync(input, output, length, limit, n =>
-            {
-                if (timer.ElapsedMilliseconds < 750) return;
-                progress.Report($"正在下载{label}：{n / 1048576:N0} MiB" + (length.HasValue ? $" / {length.Value / 1048576:N0} MiB" : ""));
-                timer.Restart();
-            }, ct).ConfigureAwait(false);
-            return;
-        }
-    }
-
-    private static async Task CopyBoundedAsync(Stream input, Stream output, long? expected, long limit, Action<long> report, CancellationToken ct)
-    {
-        if (expected is <= 0 || expected > limit) throw new InvalidDataException("下载文件大小超出允许范围。");
-        byte[] buffer = ArrayPool<byte>.Shared.Rent(65536);
-        try
-        {
-            long total = 0;
-            while (true)
-            {
-                ct.ThrowIfCancellationRequested();
-                int count = await input.ReadAsync(buffer.AsMemory(), ct).ConfigureAwait(false);
-                if (count == 0) break;
-                total += count;
-                if (total > (expected ?? limit)) throw new InvalidDataException("下载内容超过长度限制。");
-                await output.WriteAsync(buffer.AsMemory(0, count), ct).ConfigureAwait(false);
-                report(total);
-            }
-            if (total == 0 || (expected.HasValue && total != expected.Value)) throw new InvalidDataException("下载文件为空或不完整。");
-        }
-        finally { ArrayPool<byte>.Shared.Return(buffer); }
-    }
-
     internal static void ValidateLicense(string path)
     {
         using var stream = File.OpenRead(path);
@@ -183,15 +132,6 @@ internal static class Acquisition
                 if (!Rejects<XmlException>(() => ValidateLicense(xml))) return 12;
             }
             if (!Allowed(new Uri(Source, "ChatGPT-x64.msix")) || new[] { "http://persistent.oaistatic.com/a", "https://persistent.oaistatic.com.example/a", "https://persistent.oaistatic.com:8443/a", "https://user@persistent.oaistatic.com/a" }.Any(s => Allowed(new Uri(s)))) return 13;
-            static void Copy(int bytes, long? length, CancellationToken ct = default)
-            {
-                using var input = new MemoryStream(new byte[bytes]);
-                CopyBoundedAsync(input, Stream.Null, length, 4, _ => { }, ct).GetAwaiter().GetResult();
-            }
-            Copy(4, 4);
-            Copy(2, null);
-            if (!Rejects<InvalidDataException>(() => Copy(3, 4)) || !Rejects<InvalidDataException>(() => Copy(5, null)) || !Rejects<InvalidDataException>(() => Copy(0, null))) return 14;
-            if (!Rejects<OperationCanceledException>(() => Copy(4, 4, new CancellationToken(true)))) return 15;
             var package = Path.Combine(dir.FullName, "input.msix");
             var target = Path.Combine(dir.FullName, "cached.msix");
             File.WriteAllText(package, "new");

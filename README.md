@@ -2,7 +2,7 @@
 
 ## 下载最新桌面版
 
-当前正式版：**1.0.5**。点击下面的链接直接下载一个 EXE，无需先进入 GitHub 发布页：
+当前正式版：**1.0.6**。点击下面的链接直接下载一个 EXE，无需先进入 GitHub 发布页：
 
 - **[Windows x64 下载（常见 Intel / AMD 电脑）](https://github.com/XiaoBai620/chatgpt-windows-installer/releases/latest/download/ChatGPT-PackagePicker-win-x64.exe)**
 - **[Windows Arm64 下载](https://github.com/XiaoBai620/chatgpt-windows-installer/releases/latest/download/ChatGPT-PackagePicker-win-arm64.exe)**
@@ -26,6 +26,18 @@
 首页默认建议 Microsoft Store。商店不可用时，可从备用入口直接下载 OpenAI 当前发布的 MSIX 和许可证。完全断网时，在联网电脑准备适合目标架构的包和 XML，复制到目标电脑本地固定磁盘，再添加目录。[官方部署文档](https://learn.chatgpt.com/docs/enterprise/windows-deployment)。
 
 包列表扫描下载文件夹下 `ChatGPT-offline` 和当前会话添加目录的第一层 `.msix`，按清单中的数值版本排序；默认选中架构、系统要求、包身份、依赖和本地签名验证均通过的最高版本。本地最新不等于官方最新。
+
+### 下载速度与网络状态
+
+下载页面显示进度、实时速度、预计剩余时间和网络等待状态；即使暂时收不到数据，也会持续更新状态。默认开启「多连接加速」，官方源支持时最多使用 4 个连接；不支持时改用单连接，也可以手动关闭。多连接可改善部分单连接限速，无法突破云电脑出口或下载源的总带宽限制。
+
+下载停滞时会在超时后自动重连；只有官方源提供可验证的相同文件标识与分段响应时，才接着本次已收到的数据下载，避免把两个版本拼接。取消下载会清理未完成的数据；关闭助手后再次下载会重新开始。文件完整下载后仍须通过包身份、兼容性和 Windows 签名检查。
+
+### 历史版本
+
+OpenAI 的[官方部署文档](https://learn.chatgpt.com/docs/enterprise/windows-deployment)明确说明，公开 MSIX 链接下载每个架构的当前版本，不能用来指定历史版本。本助手没有官方在线历史下载列表。
+
+「本地与历史版本」会保留并列出已下载的不同版本；已有旧版时，点击「导入历史版本…」添加其所在目录，保留对应 XML 许可证。助手不会自动覆盖其他版本，部署已预配的更高版本时仍遵守 Windows 的版本与管理策略。
 
 下载不会安装。部署时优先读取包旁同名 XML，也可选择许可证。程序检查 XML 格式，许可有效性由 Windows 判定。用户确认部署后，必要时请求管理员权限；系统预配清单不可读则停止，已预配同版或更高版则跳过。回查通过仅表示系统预配，不代表当前账户已注册、可启动或已登录。不会自动重启系统、注销或绕过管理策略。
 
@@ -53,7 +65,7 @@
 
 使用 Windows .NET 10 SDK：`dotnet publish desktop/PackagePicker.csproj -c Release -r win-x64 --self-contained false -o dist/win-x64`。Arm64 将命令中的两个 `win-x64` 改为 `win-arm64`。只交付 `dist/` 的两个 EXE，不交付 `desktop/bin`、`desktop/obj` 或测试夹具。
 
-- `--test` 运行包目录、下载、部署、自更新四组回归；更新测试使用模拟 HTTP 验证渠道、精确附件绑定、摘要、篡改、重定向和不覆盖。`--smoke` 与 `--home-smoke` 检查 WPF 控件与页面入口。
+- `--test` 运行包目录、下载、部署、自更新及下载页面回归；网络测试使用模拟 HTTP 和断流，不下载真实大包。下载页面测试在后台测量控件，可通过 `PICKER_TEST_SCREENSHOTS` 指定截图目录，不显示窗口。更新测试验证渠道、精确附件绑定、摘要、篡改、重定向和不覆盖。`--smoke` 与 `--home-smoke` 检查 WPF 控件与页面入口。
 - `--verify-download <临时目录>` 从官方来源下载约 1 GB 的 MSIX/许可证而不部署；`--verify-package <MSIX绝对路径>` 检查目录扫描和自动选择。
 - 在普通权限 x64 PowerShell 中运行 `./tests/AssistantUpdate-E2E.ps1` 可重现跨进程替换和回滚：测试在新建的本地临时目录使用同项目构建的旧版夹具与新版 EXE，核对新进程窗口和文件哈希，不从网上获取可执行文件；只有测试构建带本地夹具入口。真实 UAC/DISM 写入、干净 Windows 环境及 Arm64 原生运行仍需独立验收。
 

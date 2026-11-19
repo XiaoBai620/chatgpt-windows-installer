@@ -2,6 +2,7 @@ dist/
 desktop/bin/
 desktop/obj/
 .release-work/
+diagnostics/
 .vs/
 logs/
 __pycache__/
